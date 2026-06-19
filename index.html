@@ -1,0 +1,1358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AWS S3 Knowledge Evaluation</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --orange: #FF9900; --dark: #232F3E; --blue: #1A73E8;
+      --green: #28A745;  --red: #DC3545;  --yellow: #FFC107;
+      --purple: #6f42c1; --teal: #17a2b8;
+      --radius: 10px; --shadow: 0 4px 20px rgba(0,0,0,0.12);
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #1a2a3a 0%, #232F3E 60%, #0f1a24 100%);
+      min-height: 100vh; color: #333;
+    }
+    .app { max-width: 980px; margin: 0 auto; padding: 20px; }
+
+    .header {
+      text-align: center; padding: 28px 20px 20px;
+      border-bottom: 3px solid var(--orange); margin-bottom: 24px;
+    }
+    .header .logo { font-size: 38px; margin-bottom: 6px; }
+    .header h1 { color: #fff; font-size: 24px; font-weight: 700; }
+    .header p  { color: #aac; font-size: 13px; margin-top: 4px; }
+    .user-bar {
+      display: flex; align-items: center; justify-content: flex-end;
+      gap: 10px; margin-top: 14px; flex-wrap: wrap;
+    }
+    .user-bar span { color: #dde; font-size: 13px; }
+    .admin-pill {
+      background: var(--purple); color: #fff; font-size: 11px; font-weight: 700;
+      padding: 3px 10px; border-radius: 12px; text-transform: uppercase; letter-spacing: .5px;
+    }
+    .btn-sm {
+      padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 600;
+      border: none; cursor: pointer; transition: all .2s;
+    }
+    .btn-logout { background: transparent; color: var(--orange); border: 1px solid var(--orange); }
+    .btn-logout:hover { background: var(--orange); color: #fff; }
+    .btn-admin-nav { background: var(--purple); color: #fff; }
+    .btn-admin-nav:hover { background: #5a32a3; }
+
+    .card {
+      background: #fff; border-radius: var(--radius);
+      box-shadow: var(--shadow); padding: 32px 36px; margin-bottom: 18px;
+    }
+    .card h2 { font-size: 20px; color: var(--dark); margin-bottom: 4px; }
+    .card .subtitle { color: #666; font-size: 13px; margin-bottom: 22px; }
+
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; font-size: 12px; font-weight: 600; color: #444; margin-bottom: 5px; }
+    .form-group input, .form-group select {
+      width: 100%; padding: 10px 13px; border: 1.5px solid #ddd;
+      border-radius: 7px; font-size: 14px; transition: border .2s; outline: none; background: #fff;
+    }
+    .form-group input:focus, .form-group select:focus { border-color: var(--blue); }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+    .btn {
+      width: 100%; padding: 12px; border: none; border-radius: 8px;
+      font-size: 15px; font-weight: 700; cursor: pointer; transition: all .2s;
+    }
+    .btn-primary   { background: var(--orange); color: #fff; }
+    .btn-primary:hover   { background: #e68800; transform: translateY(-1px); }
+    .btn-secondary { background: var(--dark); color: #fff; margin-top: 8px; }
+    .btn-secondary:hover { background: #1a2430; }
+    .btn-outline   { background: transparent; color: var(--blue); border: 2px solid var(--blue); margin-top: 8px; }
+    .btn-outline:hover   { background: var(--blue); color: #fff; }
+    .btn-danger    { background: var(--red); color: #fff; }
+    .btn-danger:hover    { background: #b02a37; }
+    .btn-success   { background: var(--green); color: #fff; }
+    .btn-success:hover   { background: #1e7e34; }
+    .btn-purple    { background: var(--purple); color: #fff; }
+    .btn-purple:hover    { background: #5a32a3; }
+    .btn:disabled  { opacity: .45; cursor: not-allowed; transform: none !important; }
+    .btn-icon {
+      padding: 5px 10px; border-radius: 5px; font-size: 12px; font-weight: 600;
+      border: none; cursor: pointer; transition: all .15s;
+    }
+
+    .alert { padding: 10px 13px; border-radius: 7px; font-size: 13px; margin-bottom: 14px; display: none; }
+    .alert.show { display: block; }
+    .alert-error   { background: #fff0f0; color: var(--red);   border: 1px solid #f5c6c6; }
+    .alert-success { background: #f0fff4; color: var(--green); border: 1px solid #b8dfc4; }
+    .alert-info    { background: #e8f4fd; color: var(--blue);  border: 1px solid #b8d9f0; }
+    .alert-warn    { background: #fff8e1; color: #856404;      border: 1px solid #ffd54f; }
+
+    .tab-bar { display: flex; gap: 6px; margin-bottom: 24px; }
+    .tab {
+      flex: 1; padding: 9px; text-align: center; border-radius: 7px;
+      font-size: 13px; font-weight: 600; cursor: pointer; transition: all .2s;
+      color: #666; background: #f0f0f0; border: 2px solid transparent;
+    }
+    .tab.active { background: var(--dark); color: #fff; border-color: var(--orange); }
+
+    .admin-tabs { display: flex; gap: 4px; margin-bottom: 22px; flex-wrap: wrap; }
+    .admin-tab {
+      padding: 8px 18px; border-radius: 20px; font-size: 13px; font-weight: 600;
+      cursor: pointer; border: 2px solid transparent; transition: all .2s; color: #666; background: #f0f0f0;
+    }
+    .admin-tab.active { background: var(--purple); color: #fff; border-color: var(--purple); }
+    .admin-tab:hover:not(.active) { background: #e0e0e0; }
+
+    .welcome-banner {
+      background: linear-gradient(135deg, var(--dark) 0%, #344052 100%);
+      color: #fff; border-radius: var(--radius); padding: 24px 28px;
+      margin-bottom: 18px; display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    }
+    .welcome-banner h2 { font-size: 20px; margin-bottom: 5px; }
+    .welcome-banner p  { color: #aac; font-size: 13px; }
+    .badge { background: var(--orange); color: #fff; padding: 7px 16px; border-radius: 20px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+    .badge-restricted { background: var(--red); color: #fff; padding: 7px 16px; border-radius: 20px; font-size: 12px; font-weight: 700; }
+
+    .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 18px; }
+    .stat-card {
+      background: #fff; border-radius: var(--radius); padding: 18px 20px;
+      box-shadow: var(--shadow); text-align: center; border-top: 4px solid var(--orange);
+    }
+    .stat-card.purple { border-top-color: var(--purple); }
+    .stat-card.green  { border-top-color: var(--green); }
+    .stat-card.red    { border-top-color: var(--red); }
+    .stat-card.blue   { border-top-color: var(--blue); }
+    .stat-card .num { font-size: 28px; font-weight: 800; color: var(--dark); }
+    .stat-card .lbl { font-size: 11px; color: #888; margin-top: 3px; text-transform: uppercase; letter-spacing: .5px; }
+
+    .quiz-header {
+      background: var(--dark); color: #fff; border-radius: var(--radius);
+      padding: 18px 24px; margin-bottom: 18px; display: flex; align-items: center; justify-content: space-between;
+    }
+    .progress-bar-wrap { flex: 1; margin: 0 20px; }
+    .progress-label { font-size: 11px; color: #aac; margin-bottom: 4px; }
+    .progress-bar { height: 7px; background: #3a4f63; border-radius: 4px; overflow: hidden; }
+    .progress-fill { height: 100%; background: var(--orange); border-radius: 4px; transition: width .3s; }
+    .timer-box { background: #1a3050; border-radius: 7px; padding: 7px 14px; text-align: center; min-width: 66px; }
+    .timer-box .t-num { font-size: 20px; font-weight: 800; color: var(--orange); }
+    .timer-box .t-lbl { font-size: 10px; color: #aac; }
+    .timer-box.urgent .t-num { color: var(--red); animation: pulse 1s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+    .question-card { background: #fff; border-radius: var(--radius); padding: 28px 32px; box-shadow: var(--shadow); }
+    .q-number { font-size: 11px; font-weight: 700; color: var(--orange); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+    .q-text { font-size: 18px; font-weight: 600; color: var(--dark); line-height: 1.5; margin-bottom: 20px; }
+    .options { display: flex; flex-direction: column; gap: 10px; margin-bottom: 24px; }
+    .option {
+      padding: 12px 16px; border: 2px solid #e0e4e8; border-radius: 8px;
+      cursor: pointer; font-size: 14px; color: #333; transition: all .15s;
+      display: flex; align-items: center; gap: 11px;
+    }
+    .option:hover { border-color: var(--blue); background: #f0f7ff; }
+    .option.selected { border-color: var(--blue); background: #e8f2ff; font-weight: 600; }
+    .opt-letter {
+      width: 26px; height: 26px; border-radius: 50%; border: 2px solid #ccd;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 700; flex-shrink: 0; color: #888;
+    }
+    .option.selected .opt-letter { border-color: var(--blue); color: var(--blue); background: #d0e6ff; }
+    .quiz-nav { display: flex; gap: 10px; }
+    .quiz-nav .btn { width: auto; padding: 10px 24px; font-size: 14px; }
+    .btn-prev { background: #f0f0f0; color: #555; }
+    .btn-prev:hover { background: #ddd; }
+    .btn-next { background: var(--blue); color: #fff; flex: 1; }
+    .btn-next:hover { background: #1558c0; }
+    .btn-submit-quiz { background: var(--orange); color: #fff; flex: 1; }
+    .btn-submit-quiz:hover { background: #e68800; }
+    .q-dots { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 16px; }
+    .q-dot {
+      width: 30px; height: 30px; border-radius: 50%; border: 2px solid #ddd;
+      font-size: 10px; font-weight: 700; display: flex; align-items: center;
+      justify-content: center; cursor: pointer; color: #888; transition: all .14s;
+    }
+    .q-dot.answered { background: var(--blue); border-color: var(--blue); color: #fff; }
+    .q-dot.current  { border-color: var(--orange); color: var(--orange); }
+    .q-dot.answered.current { background: var(--orange); border-color: var(--orange); }
+
+    .result-hero {
+      text-align: center; padding: 32px 24px 24px;
+      background: linear-gradient(135deg, var(--dark), #344052);
+      border-radius: var(--radius); color: #fff; margin-bottom: 18px;
+    }
+    .score-circle {
+      width: 120px; height: 120px; border-radius: 50%; border: 6px solid var(--orange);
+      display: flex; flex-direction: column; align-items: center; justify-content: center; margin: 0 auto 14px;
+    }
+    .score-circle .pct { font-size: 30px; font-weight: 900; color: var(--orange); }
+    .score-circle .lbl { font-size: 11px; color: #aac; }
+    .grade-badge { display: inline-block; padding: 5px 18px; border-radius: 20px; font-size: 12px; font-weight: 700; margin-top: 10px; }
+    .grade-A { background: var(--green); color: #fff; }
+    .grade-B { background: var(--blue);  color: #fff; }
+    .grade-C { background: var(--yellow); color: #333; }
+    .grade-F { background: var(--red);   color: #fff; }
+    .review-item { border-radius: var(--radius); overflow: hidden; border: 1.5px solid #e0e4e8; margin-bottom: 12px; }
+    .r-header { padding: 12px 16px; display: flex; align-items: flex-start; gap: 10px; cursor: pointer; background: #fff; }
+    .r-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+    .r-q { font-size: 14px; font-weight: 600; color: var(--dark); }
+    .r-status { margin-left: auto; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 10px; flex-shrink: 0; }
+    .status-correct { background: #d4edda; color: var(--green); }
+    .status-wrong   { background: #f8d7da; color: var(--red); }
+    .status-skip    { background: #e2e3e5; color: #555; }
+    .review-body { padding: 0 16px 14px; display: none; }
+    .review-body.open { display: block; }
+    .review-opt { padding: 7px 11px; border-radius: 6px; font-size: 13px; margin-bottom: 5px; }
+    .review-opt.correct-ans { background: #d4edda; color: var(--green); font-weight: 600; }
+    .review-opt.user-wrong  { background: #f8d7da; color: var(--red); }
+    .review-opt.neutral     { background: #f5f5f5; color: #555; }
+    .explanation {
+      margin-top: 10px; padding: 10px 12px; background: #fff8ec;
+      border-left: 4px solid var(--orange); border-radius: 0 6px 6px 0;
+      font-size: 12px; color: #555; line-height: 1.6;
+    }
+
+    .lb-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .lb-table th { background: var(--dark); color: #fff; padding: 10px 14px; text-align: left; }
+    .lb-table th:first-child { border-radius: 8px 0 0 0; }
+    .lb-table th:last-child  { border-radius: 0 8px 0 0; }
+    .lb-table td { padding: 10px 14px; border-bottom: 1px solid #eee; vertical-align: middle; }
+    .lb-table tr:last-child td { border-bottom: none; }
+    .lb-table tr:nth-child(even) td { background: #fafafa; }
+    .lb-table tr:hover td { background: #f0f7ff; }
+    .me-row td { font-weight: 700; background: #fff8ec !important; }
+    .rank-badge { width: 26px; height: 26px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; font-size: 12px; }
+    .rank-1 { background: #FFD700; color: #7a5a00; }
+    .rank-2 { background: #C0C0C0; color: #444; }
+    .rank-3 { background: #CD7F32; color: #fff; }
+    .rank-n { background: #eee; color: #666; }
+    .pct-bar-wrap { display: flex; align-items: center; gap: 7px; }
+    .pct-bar { flex: 1; height: 7px; background: #e0e4e8; border-radius: 4px; overflow: hidden; }
+    .pct-bar-fill { height: 100%; background: var(--orange); border-radius: 4px; }
+    .pct-num { font-weight: 700; font-size: 12px; color: var(--dark); min-width: 36px; }
+
+    .history-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 14px; border-radius: 8px; border: 1.5px solid #eee; margin-bottom: 8px; background: #fff;
+    }
+    .h-score { font-size: 18px; font-weight: 800; color: var(--orange); }
+    .h-info  { font-size: 12px; color: #888; }
+    .empty-state { text-align: center; color: #aaa; padding: 36px 20px; font-size: 14px; }
+
+    .admin-banner {
+      background: linear-gradient(135deg, #2d1b69 0%, #4a2080 100%);
+      color: #fff; border-radius: var(--radius); padding: 20px 26px;
+      margin-bottom: 18px; display: flex; align-items: center; justify-content: space-between;
+    }
+    .admin-banner h2 { font-size: 19px; margin-bottom: 4px; }
+    .admin-banner p  { color: #cbb8ff; font-size: 13px; }
+    .member-row { display: flex; align-items: center; gap: 10px; padding: 11px 14px; border-bottom: 1px solid #f0f0f0; }
+    .member-row:last-child { border-bottom: none; }
+    .member-avatar {
+      width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center;
+      justify-content: center; font-weight: 700; font-size: 14px; flex-shrink: 0; color: #fff;
+    }
+    .member-info { flex: 1; min-width: 0; }
+    .member-name  { font-size: 14px; font-weight: 600; color: var(--dark); }
+    .member-email { font-size: 12px; color: #888; }
+    .member-meta  { font-size: 11px; color: #aaa; margin-top: 1px; }
+    .status-pill { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 12px; flex-shrink: 0; }
+    .pill-active     { background: #d4edda; color: var(--green); }
+    .pill-restricted { background: #f8d7da; color: var(--red); }
+    .pill-admin      { background: #e9d8fd; color: var(--purple); }
+    .search-bar {
+      width: 100%; padding: 9px 13px; border: 1.5px solid #ddd; border-radius: 7px;
+      font-size: 13px; outline: none; margin-bottom: 14px;
+    }
+    .search-bar:focus { border-color: var(--blue); }
+    .export-btn { padding: 8px 18px; border-radius: 7px; font-size: 13px; font-weight: 600; border: none; cursor: pointer; background: var(--green); color: #fff; }
+    .export-btn:hover { background: #1e7e34; }
+    .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,.55);
+      display: flex; align-items: center; justify-content: center; z-index: 1000;
+    }
+    .modal { background: #fff; border-radius: var(--radius); padding: 28px 32px; max-width: 460px; width: 90%; box-shadow: 0 8px 40px rgba(0,0,0,.25); }
+    .modal h3 { font-size: 18px; color: var(--dark); margin-bottom: 6px; }
+    .modal .subtitle { font-size: 13px; color: #666; margin-bottom: 20px; }
+    .modal-actions { display: flex; gap: 10px; margin-top: 20px; }
+    .modal-actions .btn { margin: 0; }
+    .detail-row { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; border-bottom: 1px solid #f5f5f5; }
+    .detail-row:last-child { border-bottom: none; }
+    .detail-row .label { font-size: 12px; color: #888; min-width: 120px; }
+    .detail-row .value { font-size: 13px; color: var(--dark); font-weight: 600; }
+    .tag { display: inline-block; padding: 2px 8px; border-radius: 8px; font-size: 11px; font-weight: 600; margin-right: 4px; }
+    .tag-timed  { background: #fff3cd; color: #856404; }
+
+    /* Loading spinner */
+    .spinner-wrap { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 20px; }
+    .spinner {
+      width: 44px; height: 44px; border: 4px solid #e0e0e0;
+      border-top-color: var(--orange); border-radius: 50%; animation: spin .8s linear infinite; margin-bottom: 14px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner-wrap p { color: #aaa; font-size: 14px; }
+
+    /* Config notice */
+    .config-notice {
+      background: #fff8ec; border: 2px solid var(--orange); border-radius: var(--radius);
+      padding: 24px 28px; margin-bottom: 20px;
+    }
+    .config-notice h3 { color: var(--dark); margin-bottom: 8px; font-size: 16px; }
+    .config-notice p  { color: #555; font-size: 13px; line-height: 1.6; margin-bottom: 8px; }
+    .config-notice code { background: #f0f0f0; padding: 2px 6px; border-radius: 4px; font-size: 12px; font-family: monospace; }
+
+    @media (max-width: 620px) {
+      .card { padding: 20px 16px; }
+      .form-row { grid-template-columns: 1fr; }
+      .stats-row { grid-template-columns: 1fr 1fr; }
+      .welcome-banner { flex-direction: column; text-align: center; }
+      .question-card { padding: 20px 16px; }
+      .admin-tabs .admin-tab { padding: 7px 12px; font-size: 12px; }
+    }
+  </style>
+</head>
+<body>
+<div class="app" id="app">
+  <div class="header">
+    <div class="logo">☁️</div>
+    <h1>AWS S3 Knowledge Evaluation</h1>
+    <p>Team Training Assessment Platform</p>
+    <div class="user-bar" id="userBar" style="display:none">
+      <span id="userBarName"></span>
+      <span id="adminPill" class="admin-pill" style="display:none">Admin</span>
+      <button id="adminNavBtn" class="btn-sm btn-admin-nav" style="display:none" onclick="goAdmin()">⚙️ Admin Panel</button>
+      <button class="btn-sm btn-logout" onclick="logout()">Sign Out</button>
+    </div>
+  </div>
+  <div id="mainContent"></div>
+  <div id="modalContainer"></div>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════
+//  ⚙️  CONFIGURATION — paste your Supabase credentials here
+// ══════════════════════════════════════════════════════════
+const SUPABASE_URL = 'https://fcppedcarvpnzefwktwf.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZjcHBlZGNhcnZwbnplZndrdHdmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE3ODg0NDAsImV4cCI6MjA5NzM2NDQ0MH0.9gSnk7fKb-S5LJD3BbNcOD5yYidmrL2vpzrnBxdXjKI';
+
+// ══════════════════════════════════════════════════════════
+//  SUPABASE REST CLIENT  (no npm needed — raw fetch calls)
+// ══════════════════════════════════════════════════════════
+const sb = {
+  _h() {
+    return {
+      'Content-Type': 'application/json',
+      'apikey': SUPABASE_KEY,
+      'Authorization': 'Bearer ' + SUPABASE_KEY,
+      'Prefer': 'return=representation'
+    };
+  },
+  async select(table, query = '') {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${query}`, { headers: this._h() });
+    if (!r.ok) throw await r.json();
+    return r.json();
+  },
+  async insert(table, body) {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}`, {
+      method: 'POST', headers: this._h(), body: JSON.stringify(body)
+    });
+    if (!r.ok) throw await r.json();
+    return r.json();
+  },
+  async update(table, body, query) {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${query}`, {
+      method: 'PATCH', headers: this._h(), body: JSON.stringify(body)
+    });
+    if (!r.ok) throw await r.json();
+    return r.json();
+  },
+  async delete(table, query) {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/${table}?${query}`, {
+      method: 'DELETE', headers: this._h()
+    });
+    if (!r.ok) throw await r.json();
+    return r.ok;
+  }
+};
+
+// ══════════════════════════════════════════════════════════
+//  20 AWS S3 QUESTIONS
+// ══════════════════════════════════════════════════════════
+const QUESTIONS = [
+  { id:1,  q:"What does Amazon S3 stand for?",
+    opts:["Simple Storage Service","Scalable Storage Solution","Secure Storage System","Standard Storage Service"],
+    ans:0, exp:"S3 stands for Simple Storage Service — AWS's object storage service offering industry-leading scalability, availability, and durability." },
+  { id:2,  q:"What is the maximum size of a single object that can be stored in Amazon S3?",
+    opts:["5 GB","50 GB","5 TB","unlimited"],
+    ans:2, exp:"A single S3 object can be up to 5 TB in size. Objects larger than 100 MB should use Multipart Upload." },
+  { id:3,  q:"Which S3 storage class is designed for data that is accessed less than once a month and requires rapid retrieval?",
+    opts:["S3 Standard","S3 Standard-IA","S3 Glacier Instant Retrieval","S3 One Zone-IA"],
+    ans:2, exp:"S3 Glacier Instant Retrieval offers the lowest cost for long-lived, rarely accessed data with millisecond retrieval — ideal for once-a-quarter access." },
+  { id:4,  q:"What is an S3 bucket?",
+    opts:["A virtual server that stores S3 objects","A container for objects stored in S3 with a globally unique name","An IAM role for S3 access","A CDN distribution for S3 content"],
+    ans:1, exp:"A bucket is a container for S3 objects. Bucket names must be globally unique across all AWS accounts and regions." },
+  { id:5,  q:"Which S3 feature allows you to automatically move objects between storage classes based on access patterns?",
+    opts:["S3 Replication","S3 Versioning","S3 Lifecycle Policies","S3 Object Lock"],
+    ans:2, exp:"S3 Lifecycle Policies automate transitioning objects to cheaper storage classes (e.g., Standard → Standard-IA → Glacier) and expiring old objects." },
+  { id:6,  q:"What is the durability guarantee of Amazon S3 Standard storage class?",
+    opts:["99.9%","99.99%","99.999999999% (11 nines)","100%"],
+    ans:2, exp:"S3 Standard provides 99.999999999% (11 nines) durability by redundantly storing data across a minimum of three Availability Zones." },
+  { id:7,  q:"Which S3 feature enables you to keep multiple versions of an object in the same bucket?",
+    opts:["S3 Replication","S3 Versioning","S3 Object Tagging","S3 Multipart Upload"],
+    ans:1, exp:"S3 Versioning preserves every version of every object. Once enabled, it cannot be disabled (only suspended), protecting against accidental deletes and overwrites." },
+  { id:8,  q:"What is S3 Transfer Acceleration used for?",
+    opts:["Accelerating large object downloads within the same region","Speeding up uploads to S3 from distant locations using CloudFront edge locations","Compressing objects automatically before storing them","Encrypting objects faster at upload time"],
+    ans:1, exp:"Transfer Acceleration routes uploads through AWS CloudFront edge locations to use the optimized AWS backbone network, significantly speeding up long-distance transfers." },
+  { id:9,  q:"Which type of S3 encryption uses AWS-managed keys and requires no key management from the customer?",
+    opts:["SSE-C","SSE-KMS","SSE-S3","Client-Side Encryption"],
+    ans:2, exp:"SSE-S3 (Server-Side Encryption with S3-managed keys) automatically manages key rotation and requires zero key management from the user." },
+  { id:10, q:"What does an S3 Bucket Policy do?",
+    opts:["Controls which EC2 instances can connect to the bucket","Defines lifecycle rules for objects in the bucket","Grants or denies access to the bucket and its objects using resource-based JSON policies","Encrypts all objects in the bucket automatically"],
+    ans:2, exp:"Bucket Policies are resource-based JSON policies attached directly to a bucket that control access for IAM users, roles, other AWS accounts, or public access." },
+  { id:11, q:"What is the purpose of S3 Object Lock?",
+    opts:["Prevents objects from being publicly accessible","Locks object metadata to prevent tagging changes","Prevents objects from being deleted or overwritten for a fixed period or indefinitely (WORM)","Locks the bucket to a single AWS region"],
+    ans:2, exp:"S3 Object Lock implements WORM (Write Once Read Many) storage. It prevents object deletion or modification for a set retention period — useful for compliance and regulatory requirements." },
+  { id:12, q:"Which S3 storage class stores data in only ONE Availability Zone?",
+    opts:["S3 Standard","S3 Standard-IA","S3 One Zone-IA","S3 Glacier Flexible Retrieval"],
+    ans:2, exp:"S3 One Zone-IA stores data in a single AZ, making it 20% cheaper than Standard-IA but with less availability. Suitable for easily reproducible data." },
+  { id:13, q:"What is S3 Cross-Region Replication (CRR) used for?",
+    opts:["Copying objects within the same bucket","Automatically replicating objects to a bucket in a different AWS region","Replicating S3 metadata to DynamoDB","Synchronizing S3 with on-premise storage"],
+    ans:1, exp:"CRR asynchronously replicates objects across buckets in different AWS regions — used for disaster recovery, compliance, and reducing latency for global users." },
+  { id:14, q:"What is the default access level for a newly created S3 bucket?",
+    opts:["Public read","Public read-write","Private (all public access blocked)","Accessible by all AWS accounts"],
+    ans:2, exp:"By default, new S3 buckets are private and block all public access. S3 Block Public Access settings are enabled by default since April 2023." },
+  { id:15, q:"Which S3 feature allows you to query data directly in S3 using standard SQL without loading it into a database?",
+    opts:["S3 Analytics","S3 Inventory","S3 Select","Amazon Athena"],
+    ans:2, exp:"S3 Select lets you retrieve a subset of data from an object using SQL expressions, filtering data server-side to reduce transfer costs and improve performance." },
+  { id:16, q:"What is a pre-signed URL in S3?",
+    opts:["A permanent public URL for an S3 object","A time-limited URL that grants temporary access to a private S3 object without requiring AWS credentials","A URL that only works from within a VPC","A signed certificate for S3 bucket TLS"],
+    ans:1, exp:"Pre-signed URLs grant temporary, time-bounded access to private S3 objects. Anyone with the URL can access the object until it expires — no AWS credentials required." },
+  { id:17, q:"What is the minimum storage duration charge for S3 Standard-IA?",
+    opts:["No minimum","7 days","30 days","90 days"],
+    ans:2, exp:"S3 Standard-IA has a minimum storage duration of 30 days. Objects deleted, overwritten, or transitioned before 30 days are still charged for the full 30 days." },
+  { id:18, q:"Which S3 consistency model does AWS S3 provide for all operations?",
+    opts:["Eventual consistency for all operations","Strong read-after-write consistency for all operations","Strong consistency only for new object PUTs","Eventual consistency for overwrites, strong for new PUTs"],
+    ans:1, exp:"Since December 2020, S3 provides strong read-after-write consistency for all operations (GET, PUT, DELETE, LIST) at no extra cost or performance impact." },
+  { id:19, q:"What is the purpose of S3 Intelligent-Tiering storage class?",
+    opts:["Stores data across 3 regions automatically","Automatically moves objects between access tiers based on changing access patterns with no retrieval fees","Provides the lowest possible latency for frequently accessed objects","Archives rarely accessed data to tape storage"],
+    ans:1, exp:"S3 Intelligent-Tiering monitors access patterns and automatically moves objects between frequent, infrequent, and archive tiers — eliminating the need to manually manage lifecycle transitions." },
+  { id:20, q:"What is the maximum number of S3 buckets allowed per AWS account by default?",
+    opts:["50","100","1,000","Unlimited"],
+    ans:1, exp:"By default, AWS allows 100 S3 buckets per account. You can request an increase up to 1,000 buckets via AWS Service Quotas." }
+];
+
+// ══════════════════════════════════════════════════════════
+//  CONSTANTS & HELPERS
+// ══════════════════════════════════════════════════════════
+const FREE_DOMAINS   = ['gmail.com','yahoo.com','hotmail.com','outlook.com','aol.com',
+  'icloud.com','live.com','msn.com','protonmail.com','mail.com','ymail.com','me.com'];
+const QUIZ_DURATION  = 30 * 60;
+const AVATAR_COLORS  = ['#e74c3c','#3498db','#2ecc71','#9b59b6','#f39c12','#1abc9c','#e67e22','#34495e'];
+
+function isConfigured()    { return SUPABASE_URL !== 'YOUR_SUPABASE_URL' && SUPABASE_KEY !== 'YOUR_SUPABASE_ANON_KEY'; }
+function isBusinessEmail(e){ const d=(e.split('@')[1]||'').toLowerCase(); return d&&!FREE_DOMAINS.includes(d); }
+function avatarColor(e)    { let h=0; for(let c of e) h=(h+c.charCodeAt(0))%AVATAR_COLORS.length; return AVATAR_COLORS[h]; }
+function initials(n)       { return n.split(' ').map(w=>w[0]||'').join('').toUpperCase().slice(0,2); }
+function gradeClass(p)     { return p>=85?'grade-A':p>=70?'grade-B':p>=50?'grade-C':'grade-F'; }
+function gradeName(p)      { return p>=85?'⭐ Excellent':p>=70?'✅ Good':p>=50?'⚠️ Needs Work':'❌ Failed'; }
+function fmtDate(iso)      { return new Date(iso).toLocaleString(); }
+function hashPass(p)       { return btoa(p); }   // base64 — sufficient for a training app
+
+// ══════════════════════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════════════════════
+let state = {
+  view: 'auth',        // auth | dashboard | quiz | result | admin
+  authTab: 'login',
+  adminTab: 'overview',
+  currentUser: JSON.parse(sessionStorage.getItem('s3_user') || 'null'),
+  memberSearch: '',
+  resultSearch: '',
+  // quiz
+  currentQ: 0, answers: {}, timerSec: 0, timerInterval: null, lastResult: null,
+  // cached data (refreshed on each admin view load)
+  allUsers: [], allAttempts: [], myAttempts: [],
+};
+
+function saveSession() { sessionStorage.setItem('s3_user', JSON.stringify(state.currentUser)); }
+function clearSession(){ sessionStorage.removeItem('s3_user'); }
+
+// ══════════════════════════════════════════════════════════
+//  ROUTER
+// ══════════════════════════════════════════════════════════
+function render() {
+  const mc    = document.getElementById('mainContent');
+  const ub    = document.getElementById('userBar');
+  const ubn   = document.getElementById('userBarName');
+  const apill = document.getElementById('adminPill');
+  const anav  = document.getElementById('adminNavBtn');
+
+  if (state.currentUser) {
+    ub.style.display    = 'flex';
+    ubn.textContent     = '👤 ' + state.currentUser.name;
+    const admin = state.currentUser.role === 'admin';
+    apill.style.display = admin ? 'inline-block' : 'none';
+    anav.style.display  = admin ? 'inline-block' : 'none';
+  } else {
+    ub.style.display = 'none';
+  }
+
+  // If Supabase not configured, show setup notice
+  if (!isConfigured() && state.view !== 'quiz' && state.view !== 'result') {
+    mc.innerHTML = renderConfigNotice();
+    return;
+  }
+
+  if      (state.view === 'auth')      mc.innerHTML = renderAuth();
+  else if (state.view === 'dashboard') { loadDashboard(); }
+  else if (state.view === 'quiz')      mc.innerHTML = renderQuiz();
+  else if (state.view === 'result')    mc.innerHTML = renderResult();
+  else if (state.view === 'admin')     { loadAdmin(); }
+}
+
+// ══════════════════════════════════════════════════════════
+//  CONFIG NOTICE (shown until credentials are filled in)
+// ══════════════════════════════════════════════════════════
+function renderConfigNotice() {
+  return `
+  <div class="config-notice">
+    <h3>⚙️ Setup Required</h3>
+    <p>Open <code>index.html</code> in a text editor and replace the two placeholder values near the top of the
+    <code>&lt;script&gt;</code> section:</p>
+    <p><code>const SUPABASE_URL = 'YOUR_SUPABASE_URL';</code><br>
+       <code>const SUPABASE_KEY = 'YOUR_SUPABASE_ANON_KEY';</code></p>
+    <p>Follow the step-by-step guide in <strong>SETUP.md</strong> (in the same folder as this file) to get your
+    free Supabase credentials and deploy to Netlify.</p>
+  </div>
+  <div class="card" style="text-align:center;padding:40px 20px">
+    <div style="font-size:52px;margin-bottom:16px">🚀</div>
+    <h2 style="margin-bottom:8px">Ready to go live?</h2>
+    <p style="color:#666;font-size:14px;line-height:1.7">
+      1. Create a free Supabase project at <strong>supabase.com</strong><br>
+      2. Run the SQL from SETUP.md to create tables<br>
+      3. Paste your URL + anon key into this file<br>
+      4. Drag the folder to <strong>netlify.com</strong> — done!
+    </p>
+  </div>`;
+}
+
+// ══════════════════════════════════════════════════════════
+//  AUTH VIEW
+// ══════════════════════════════════════════════════════════
+function renderAuth() {
+  const isLogin = state.authTab === 'login';
+  return `
+  <div class="card" style="max-width:460px;margin:0 auto">
+    <div class="tab-bar">
+      <div class="tab ${isLogin?'active':''}"  onclick="switchTab('login')">Sign In</div>
+      <div class="tab ${!isLogin?'active':''}" onclick="switchTab('register')">Create Account</div>
+    </div>
+    ${isLogin ? `
+      <h2>Welcome back</h2>
+      <p class="subtitle">Sign in with your business email to take the S3 evaluation.</p>
+      <div id="authAlert" class="alert"></div>
+      <div class="form-group">
+        <label>Business Email</label>
+        <input type="email" id="loginEmail" placeholder="you@company.com" autocomplete="username"/>
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="loginPass" placeholder="••••••••" autocomplete="current-password"/>
+      </div>
+      <button class="btn btn-primary" id="loginBtn" onclick="doLogin()">Sign In →</button>
+      <button class="btn btn-outline" onclick="switchTab('register')">No account? Register</button>
+    ` : `
+      <h2>Create your account</h2>
+      <p class="subtitle">Use your business email — personal providers (Gmail, Yahoo, etc.) are not accepted.</p>
+      <div id="authAlert" class="alert"></div>
+      <div class="form-group">
+        <label>Full Name</label>
+        <input type="text" id="regName" placeholder="Jane Smith"/>
+      </div>
+      <div class="form-group">
+        <label>Business Email</label>
+        <input type="email" id="regEmail" placeholder="jane@company.com" autocomplete="username"/>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="regPass" placeholder="Min 6 chars" autocomplete="new-password"/>
+        </div>
+        <div class="form-group">
+          <label>Confirm Password</label>
+          <input type="password" id="regPass2" placeholder="Repeat" autocomplete="new-password"/>
+        </div>
+      </div>
+      <button class="btn btn-primary" id="regBtn" onclick="doRegister()">Create Account →</button>
+      <button class="btn btn-outline" onclick="switchTab('login')">Already registered? Sign in</button>
+    `}
+
+  </div>`;
+}
+
+function switchTab(tab) { state.authTab = tab; render(); }
+
+function showAlert(id, msg, type = 'error') {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.className = 'alert show alert-' + type;
+  el.textContent = msg;
+}
+
+function setLoading(btnId, loading, label = '') {
+  const btn = document.getElementById(btnId);
+  if (!btn) return;
+  btn.disabled = loading;
+  btn.textContent = loading ? '⏳ Please wait…' : label;
+}
+
+async function doLogin() {
+  const email = (document.getElementById('loginEmail')?.value || '').trim().toLowerCase();
+  const pass  = (document.getElementById('loginPass')?.value  || '');
+  if (!email || !pass) return showAlert('authAlert', 'Please enter your email and password.');
+  setLoading('loginBtn', true);
+  try {
+    const rows = await sb.select('users', `email=eq.${encodeURIComponent(email)}&select=*`);
+    if (!rows.length) return showAlert('authAlert', 'No account found with this email.');
+    const user = rows[0];
+    if (user.password_hash !== hashPass(pass)) return showAlert('authAlert', 'Incorrect password.');
+    if (user.status === 'restricted') return showAlert('authAlert', 'Your account is restricted. Contact your administrator.');
+    state.currentUser = { id: user.id, email: user.email, name: user.name, role: user.role, status: user.status };
+    saveSession();
+    state.view = user.role === 'admin' ? 'admin' : 'dashboard';
+    render();
+  } catch(e) {
+    showAlert('authAlert', 'Login failed: ' + (e.message || JSON.stringify(e)));
+  } finally {
+    setLoading('loginBtn', false, 'Sign In →');
+  }
+}
+
+async function doRegister() {
+  const name  = (document.getElementById('regName')?.value  || '').trim();
+  const email = (document.getElementById('regEmail')?.value || '').trim().toLowerCase();
+  const pass  = (document.getElementById('regPass')?.value  || '');
+  const pass2 = (document.getElementById('regPass2')?.value || '');
+  if (!name)  return showAlert('authAlert', 'Please enter your full name.');
+  if (!email) return showAlert('authAlert', 'Please enter your business email.');
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showAlert('authAlert', 'Invalid email format.');
+  if (!isBusinessEmail(email)) return showAlert('authAlert', 'Please use your business email. Personal providers are not allowed.');
+  if (pass.length < 6) return showAlert('authAlert', 'Password must be at least 6 characters.');
+  if (pass !== pass2)  return showAlert('authAlert', 'Passwords do not match.');
+  setLoading('regBtn', true);
+  try {
+    const existing = await sb.select('users', `email=eq.${encodeURIComponent(email)}&select=id`);
+    if (existing.length) return showAlert('authAlert', 'An account with this email already exists.');
+    const rows = await sb.insert('users', { email, name, password_hash: hashPass(pass), role: 'member', status: 'active' });
+    const user = rows[0];
+    state.currentUser = { id: user.id, email: user.email, name: user.name, role: user.role, status: user.status };
+    saveSession();
+    state.view = 'dashboard';
+    render();
+  } catch(e) {
+    const msg = e?.[0]?.message || e.message || JSON.stringify(e);
+    showAlert('authAlert', 'Registration failed: ' + msg);
+  } finally {
+    setLoading('regBtn', false, 'Create Account →');
+  }
+}
+
+function logout() {
+  if (state.timerInterval) clearInterval(state.timerInterval);
+  state.currentUser = null;
+  state.view = 'auth';
+  state.authTab = 'login';
+  clearSession();
+  render();
+}
+
+function goAdmin() { state.view = 'admin'; state.adminTab = 'overview'; render(); }
+
+// ══════════════════════════════════════════════════════════
+//  DASHBOARD
+// ══════════════════════════════════════════════════════════
+function showSpinner(msg = 'Loading…') {
+  document.getElementById('mainContent').innerHTML =
+    `<div class="spinner-wrap"><div class="spinner"></div><p>${msg}</p></div>`;
+}
+
+async function loadDashboard() {
+  showSpinner('Loading your dashboard…');
+  try {
+    const uid = state.currentUser.id;
+    state.myAttempts = await sb.select('attempts',
+      `user_id=eq.${uid}&order=completed_at.desc&select=*`);
+    // refresh user status in case admin changed it
+    const users = await sb.select('users', `id=eq.${uid}&select=*`);
+    if (users.length) {
+      state.currentUser.status = users[0].status;
+      saveSession();
+    }
+    // leaderboard — best per user
+    const all = await sb.select('attempts', 'select=email,name,score,percentage&order=percentage.desc');
+    const grouped = {};
+    all.forEach(a => {
+      if (!grouped[a.email]) grouped[a.email] = { name: a.name, email: a.email, best: 0, bestScore: 0, attempts: 0 };
+      grouped[a.email].attempts++;
+      if (a.percentage > grouped[a.email].best) { grouped[a.email].best = a.percentage; grouped[a.email].bestScore = a.score; }
+    });
+    const lbRows = Object.values(grouped).sort((a, b) => b.best - a.best || b.bestScore - a.bestScore);
+    const myRank = lbRows.findIndex(r => r.email === state.currentUser.email) + 1;
+    document.getElementById('mainContent').innerHTML = renderDashboard(state.myAttempts, lbRows, myRank);
+    attachEvents();
+  } catch(e) {
+    document.getElementById('mainContent').innerHTML =
+      `<div class="card"><p style="color:var(--red)">Failed to load dashboard: ${e.message||JSON.stringify(e)}</p>
+       <button class="btn btn-primary" style="margin-top:16px;max-width:200px" onclick="loadDashboard()">Retry</button></div>`;
+  }
+}
+
+function renderDashboard(myAttempts, lbRows, myRank) {
+  if (state.currentUser.status === 'restricted') {
+    return `
+    <div class="welcome-banner">
+      <div><h2>👋 Hello, ${state.currentUser.name}</h2><p>Your account has been restricted by the administrator.</p></div>
+      <div class="badge-restricted">🔒 Restricted</div>
+    </div>
+    <div class="card" style="text-align:center;padding:40px">
+      <div style="font-size:48px;margin-bottom:16px">🔒</div>
+      <h2 style="color:var(--red);margin-bottom:8px">Account Restricted</h2>
+      <p style="color:#666;font-size:14px">You cannot take the quiz at this time.<br>Please contact your administrator to restore access.</p>
+    </div>`;
+  }
+
+  const best    = myAttempts.length ? Math.max(...myAttempts.map(a => a.percentage)) : null;
+  const lastPct = myAttempts.length ? myAttempts[0].percentage : null;
+
+  return `
+  <div class="welcome-banner">
+    <div>
+      <h2>👋 Hello, ${state.currentUser.name}!</h2>
+      <p>Ready to test your AWS S3 knowledge? 20 questions · 30-minute timer.</p>
+    </div>
+    <div class="badge">20 Questions · 30 min</div>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-card"><div class="num">${myAttempts.length}</div><div class="lbl">Attempts</div></div>
+    <div class="stat-card green"><div class="num">${best !== null ? best+'%' : '—'}</div><div class="lbl">Best Score</div></div>
+    <div class="stat-card blue"><div class="num">${lastPct !== null ? lastPct+'%' : '—'}</div><div class="lbl">Last Score</div></div>
+    <div class="stat-card purple"><div class="num">${myRank > 0 ? '#'+myRank : '—'}</div><div class="lbl">Team Rank</div></div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px">
+    <button class="btn btn-primary" style="padding:14px;font-size:15px" onclick="startQuiz()">
+      🚀 ${myAttempts.length > 0 ? 'Retake Quiz' : 'Start Quiz'}
+    </button>
+    <button class="btn btn-secondary" style="padding:14px;font-size:15px;margin:0" onclick="toggleLb()">
+      🏆 Team Leaderboard
+    </button>
+  </div>
+
+  <div id="lbSection" style="display:none">${renderLeaderboard(lbRows)}</div>
+
+  ${myAttempts.length > 0 ? `
+  <div class="card">
+    <h2>📋 Your Attempt History</h2>
+    <p class="subtitle">Your previous quiz submissions.</p>
+    ${myAttempts.map(a => `
+      <div class="history-item">
+        <div>
+          <div class="h-score">${a.score}/20 <span style="font-size:13px;color:#888">(${a.percentage}%)</span>
+            ${a.timed_out ? '<span class="tag tag-timed">Timed out</span>' : ''}
+          </div>
+          <div class="h-info">${fmtDate(a.completed_at)}</div>
+        </div>
+        <div class="grade-badge ${gradeClass(a.percentage)}">${gradeName(a.percentage)}</div>
+      </div>`).join('')}
+  </div>` : ''}`;
+}
+
+function toggleLb() {
+  const el = document.getElementById('lbSection');
+  if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+function renderLeaderboard(rows) {
+  if (!rows || !rows.length) return `<div class="card"><h2>🏆 Team Leaderboard</h2><div class="empty-state">No attempts yet. Be the first!</div></div>`;
+  return `
+  <div class="card">
+    <h2>🏆 Team Leaderboard</h2>
+    <p class="subtitle">Best score per participant — updated in real time.</p>
+    <table class="lb-table">
+      <thead><tr><th>#</th><th>Name</th><th>Email</th><th style="min-width:140px">Best Score</th><th>Attempts</th></tr></thead>
+      <tbody>
+        ${rows.map((r,i) => `
+          <tr class="${r.email===state.currentUser?.email?'me-row':''}">
+            <td><span class="rank-badge rank-${i<3?i+1:'n'}">${i+1}</span></td>
+            <td>${r.name}${r.email===state.currentUser?.email?' <b style="color:var(--orange)">(You)</b>':''}</td>
+            <td style="color:#888;font-size:12px">${r.email}</td>
+            <td>
+              <div class="pct-bar-wrap">
+                <div class="pct-bar"><div class="pct-bar-fill" style="width:${r.best}%"></div></div>
+                <span class="pct-num">${r.best}%</span>
+              </div>
+            </td>
+            <td style="color:#888">${r.attempts}</td>
+          </tr>`).join('')}
+      </tbody>
+    </table>
+  </div>`;
+}
+
+// ══════════════════════════════════════════════════════════
+//  QUIZ
+// ══════════════════════════════════════════════════════════
+function startQuiz() {
+  if (state.currentUser.status === 'restricted') return;
+  state.currentQ = 0; state.answers = {}; state.timerSec = QUIZ_DURATION;
+  state.view = 'quiz'; render(); startTimer();
+}
+
+function startTimer() {
+  if (state.timerInterval) clearInterval(state.timerInterval);
+  state.timerInterval = setInterval(() => {
+    state.timerSec--;
+    updateTimer();
+    if (state.timerSec <= 0) { clearInterval(state.timerInterval); submitQuiz(true); }
+  }, 1000);
+}
+
+function updateTimer() {
+  const el = document.getElementById('timerNum'), box = document.getElementById('timerBox');
+  if (!el) return;
+  const m = Math.floor(state.timerSec/60), s = state.timerSec%60;
+  el.textContent = (m<10?'0'+m:m)+':'+(s<10?'0'+s:s);
+  if (box) box.className = 'timer-box'+(state.timerSec<=300?' urgent':'');
+}
+
+function renderQuiz() {
+  const q = QUESTIONS[state.currentQ];
+  const answered = Object.keys(state.answers).length;
+  const m = Math.floor(state.timerSec/60), s = state.timerSec%60;
+  const isLast = state.currentQ === QUESTIONS.length-1;
+  const letters = ['A','B','C','D'];
+  return `
+  <div class="quiz-header">
+    <div style="text-align:center">
+      <div style="font-size:11px;color:#aac;margin-bottom:2px">Question</div>
+      <div style="font-size:19px;font-weight:800;color:#fff">${state.currentQ+1}<span style="color:#667;font-size:13px">/${QUESTIONS.length}</span></div>
+    </div>
+    <div class="progress-bar-wrap">
+      <div class="progress-label">Progress — ${answered} of ${QUESTIONS.length} answered</div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${(answered/QUESTIONS.length)*100}%"></div></div>
+    </div>
+    <div class="timer-box${state.timerSec<=300?' urgent':''}" id="timerBox">
+      <div class="t-num" id="timerNum">${(m<10?'0'+m:m)+':'+(s<10?'0'+s:s)}</div>
+      <div class="t-lbl">Remaining</div>
+    </div>
+  </div>
+  <div class="q-dots">
+    ${QUESTIONS.map((_,i) => `<div class="q-dot ${state.answers[i]!==undefined?'answered':''} ${i===state.currentQ?'current':''}" onclick="goToQ(${i})">${i+1}</div>`).join('')}
+  </div>
+  <div class="question-card">
+    <div class="q-number">Question ${state.currentQ+1} of ${QUESTIONS.length}</div>
+    <div class="q-text">${q.q}</div>
+    <div class="options">
+      ${q.opts.map((opt,i) => `
+        <div class="option ${state.answers[state.currentQ]===i?'selected':''}" onclick="selectAnswer(${i})">
+          <div class="opt-letter">${letters[i]}</div><span>${opt}</span>
+        </div>`).join('')}
+    </div>
+    <div class="quiz-nav">
+      ${state.currentQ>0 ? `<button class="btn btn-prev" onclick="prevQ()">← Back</button>` : ''}
+      ${!isLast ? `<button class="btn btn-next" onclick="nextQ()">Next →</button>` : ''}
+      ${isLast  ? `<button class="btn btn-submit-quiz" onclick="confirmSubmit()">
+        ${Object.keys(state.answers).length===QUESTIONS.length?'✅ Submit Quiz':`Submit (${QUESTIONS.length-Object.keys(state.answers).length} unanswered)`}
+      </button>` : ''}
+    </div>
+  </div>`;
+}
+
+function selectAnswer(idx) {
+  state.answers[state.currentQ] = idx;
+  document.querySelectorAll('.option').forEach((el,i) => {
+    el.classList.toggle('selected',i===idx);
+    const l=el.querySelector('.opt-letter');
+    l.style.borderColor=i===idx?'var(--blue)':''; l.style.color=i===idx?'var(--blue)':''; l.style.background=i===idx?'#d0e6ff':'';
+  });
+  document.querySelectorAll('.q-dot').forEach((el,i)=>el.classList.toggle('answered',state.answers[i]!==undefined));
+  const answered=Object.keys(state.answers).length;
+  const fill=document.querySelector('.progress-fill'); if(fill) fill.style.width=((answered/QUESTIONS.length)*100)+'%';
+  const lbl=document.querySelector('.progress-label');  if(lbl) lbl.textContent=`Progress — ${answered} of ${QUESTIONS.length} answered`;
+  const sb2=document.querySelector('.btn-submit-quiz'); if(sb2) sb2.textContent=answered===QUESTIONS.length?'✅ Submit Quiz':`Submit (${QUESTIONS.length-answered} unanswered)`;
+}
+
+function renderQuizInPlace() { document.getElementById('mainContent').innerHTML=renderQuiz(); attachEvents(); }
+function nextQ() { if(state.currentQ<QUESTIONS.length-1){state.currentQ++;renderQuizInPlace();} }
+function prevQ() { if(state.currentQ>0){state.currentQ--;renderQuizInPlace();} }
+function goToQ(i){ state.currentQ=i; renderQuizInPlace(); }
+
+function confirmSubmit() {
+  const u = QUESTIONS.length-Object.keys(state.answers).length;
+  if(u>0&&!confirm(`You have ${u} unanswered question(s). Submit anyway?`)) return;
+  submitQuiz(false);
+}
+
+async function submitQuiz(timedOut) {
+  clearInterval(state.timerInterval);
+  let score = 0;
+  const results = QUESTIONS.map((q,i) => {
+    const ua=state.answers[i]; const ok=ua===q.ans; if(ok) score++;
+    return {...q, userAnswer:ua!==undefined?ua:null, isCorrect:ok};
+  });
+  const pct = Math.round((score/QUESTIONS.length)*100);
+
+  // Show saving indicator
+  document.getElementById('mainContent').innerHTML =
+    `<div class="spinner-wrap"><div class="spinner"></div><p>Saving your results…</p></div>`;
+
+  try {
+    await sb.insert('attempts', {
+      user_id:     state.currentUser.id,
+      email:       state.currentUser.email,
+      name:        state.currentUser.name,
+      score, total: QUESTIONS.length,
+      percentage:  pct,
+      timed_out:   timedOut
+    });
+  } catch(e) {
+    console.warn('Failed to save attempt:', e);
+    // Still show results even if save fails
+  }
+
+  state.lastResult = {
+    score, total: QUESTIONS.length, percentage: pct,
+    timedOut, results
+  };
+  state.view = 'result';
+  render();
+}
+
+// ══════════════════════════════════════════════════════════
+//  RESULT VIEW
+// ══════════════════════════════════════════════════════════
+function renderResult() {
+  const r = state.lastResult;
+  const letters = ['A','B','C','D'];
+  const reviewItems = r.results.map((q,i) => {
+    const skipped=q.userAnswer===null;
+    const icon=skipped?'⏭️':q.isCorrect?'✅':'❌';
+    const sc=skipped?'status-skip':q.isCorrect?'status-correct':'status-wrong';
+    const st=skipped?'Skipped':q.isCorrect?'Correct':'Incorrect';
+    const opts=q.opts.map((opt,oi)=>{
+      const cls=oi===q.ans?'correct-ans':(oi===q.userAnswer&&!q.isCorrect?'user-wrong':'neutral');
+      return `<div class="review-opt ${cls}">${letters[oi]}. ${opt}${oi===q.ans?' ✓':''}${oi===q.userAnswer&&!q.isCorrect?' ← your answer':''}</div>`;
+    }).join('');
+    return `
+    <div class="review-item">
+      <div class="r-header" onclick="toggleReview(${i})">
+        <span class="r-icon">${icon}</span>
+        <span class="r-q">Q${i+1}. ${q.q}</span>
+        <span class="r-status ${sc}">${st}</span>
+      </div>
+      <div class="review-body" id="rev${i}">${opts}
+        <div class="explanation"><strong>💡 Explanation:</strong> ${q.exp}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  return `
+  <div class="result-hero">
+    ${r.timedOut?'<div style="background:#e74c3c;color:#fff;padding:5px 14px;border-radius:8px;font-size:12px;margin-bottom:14px;display:inline-block">⏰ Time Expired</div>':''}
+    <div class="score-circle">
+      <div class="pct">${r.percentage}%</div>
+      <div class="lbl">${r.score}/${r.total}</div>
+    </div>
+    <h2>Quiz Complete — ${state.currentUser.name}</h2>
+    <p>You answered ${r.score} of ${r.total} correctly.</p>
+    <div class="grade-badge ${gradeClass(r.percentage)}">${gradeName(r.percentage)}</div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+    <button class="btn btn-primary"   style="margin:0;padding:13px" onclick="startQuiz()">🔄 Retake Quiz</button>
+    <button class="btn btn-secondary" style="margin:0;padding:13px" onclick="state.view='dashboard';render()">📊 Dashboard</button>
+  </div>
+  <div class="card">
+    <h2>📖 Answer Review</h2>
+    <p class="subtitle">Click any question to expand the explanation.</p>
+    ${reviewItems}
+  </div>`;
+}
+
+function toggleReview(i) { const el=document.getElementById('rev'+i); if(el) el.classList.toggle('open'); }
+
+// ══════════════════════════════════════════════════════════
+//  ADMIN PANEL
+// ══════════════════════════════════════════════════════════
+async function loadAdmin() {
+  if (state.currentUser.role !== 'admin') {
+    document.getElementById('mainContent').innerHTML =
+      `<div class="card"><h2 style="color:var(--red)">Access Denied</h2></div>`;
+    return;
+  }
+  showSpinner('Loading admin panel…');
+  try {
+    state.allUsers    = await sb.select('users',    'order=created_at.desc&select=*');
+    state.allAttempts = await sb.select('attempts', 'order=completed_at.desc&select=*');
+    document.getElementById('mainContent').innerHTML = renderAdmin();
+    attachEvents();
+  } catch(e) {
+    document.getElementById('mainContent').innerHTML =
+      `<div class="card"><p style="color:var(--red)">Failed to load: ${e.message||JSON.stringify(e)}</p>
+       <button class="btn btn-primary" style="margin-top:16px;max-width:200px" onclick="loadAdmin()">Retry</button></div>`;
+  }
+}
+
+function renderAdmin() {
+  const members = state.allUsers.filter(u => u.role !== 'admin');
+  const totalM  = members.length;
+  const restricted = members.filter(u => u.status === 'restricted').length;
+  const totalA  = state.allAttempts.length;
+  const avgScore = totalA ? Math.round(state.allAttempts.reduce((s,a)=>s+a.percentage,0)/totalA) : 0;
+
+  const tabs = [
+    {id:'overview',   label:'📊 Overview'},
+    {id:'members',    label:'👥 Members'},
+    {id:'results',    label:'📋 All Results'},
+    {id:'add-member', label:'➕ Add Member'},
+  ];
+
+  return `
+  <div class="admin-banner">
+    <div>
+      <h2>⚙️ Admin Panel</h2>
+      <p>Manage members, view all results, and control access.</p>
+    </div>
+    <button class="btn-sm" style="background:#fff;color:var(--purple);font-weight:700"
+      onclick="state.view='dashboard';render()">← Back to Dashboard</button>
+  </div>
+  <div class="admin-tabs">
+    ${tabs.map(t=>`<div class="admin-tab ${state.adminTab===t.id?'active':''}" onclick="switchAdminTab('${t.id}')">${t.label}</div>`).join('')}
+  </div>
+  ${state.adminTab==='overview'   ? renderAdminOverview(totalM,restricted,totalA,avgScore) : ''}
+  ${state.adminTab==='members'    ? renderAdminMembers(members) : ''}
+  ${state.adminTab==='results'    ? renderAdminResults() : ''}
+  ${state.adminTab==='add-member' ? renderAddMember() : ''}`;
+}
+
+function switchAdminTab(tab) { state.adminTab=tab; document.getElementById('mainContent').innerHTML=renderAdmin(); attachEvents(); }
+
+// ── Admin Overview ──
+function renderAdminOverview(totalM, restricted, totalA, avgScore) {
+  const passCount = state.allAttempts.filter(a=>a.percentage>=70).length;
+  const failCount = totalA - passCount;
+
+  const grouped = {};
+  state.allAttempts.forEach(a => {
+    if(!grouped[a.email]) grouped[a.email]={name:a.name,email:a.email,best:0};
+    if(a.percentage>grouped[a.email].best) grouped[a.email].best=a.percentage;
+  });
+  const topScorers = Object.values(grouped).sort((a,b)=>b.best-a.best).slice(0,5);
+  const recent = state.allAttempts.slice(0,6);
+
+  return `
+  <div class="stats-row">
+    <div class="stat-card blue"><div class="num">${totalM}</div><div class="lbl">Total Members</div></div>
+    <div class="stat-card red"><div class="num">${restricted}</div><div class="lbl">Restricted</div></div>
+    <div class="stat-card green"><div class="num">${totalA}</div><div class="lbl">Total Attempts</div></div>
+    <div class="stat-card purple"><div class="num">${avgScore}%</div><div class="lbl">Avg Score</div></div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+    <div class="card" style="margin-bottom:0">
+      <h2>🏆 Top Scorers</h2><p class="subtitle">Best score per member.</p>
+      ${topScorers.length ? topScorers.map((r,i)=>`
+        <div class="member-row" style="padding:10px 0">
+          <span class="rank-badge rank-${i<3?i+1:'n'}" style="flex-shrink:0">${i+1}</span>
+          <div class="member-avatar" style="background:${avatarColor(r.email)}">${initials(r.name)}</div>
+          <div class="member-info"><div class="member-name">${r.name}</div><div class="member-email">${r.email}</div></div>
+          <div style="font-weight:800;color:var(--orange)">${r.best}%</div>
+        </div>`).join('')
+      : '<div class="empty-state">No attempts yet.</div>'}
+    </div>
+    <div class="card" style="margin-bottom:0">
+      <h2>🕐 Recent Activity</h2><p class="subtitle">Latest quiz submissions.</p>
+      ${recent.length ? recent.map(a=>`
+        <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f5f5f5">
+          <div class="member-avatar" style="background:${avatarColor(a.email)};width:30px;height:30px;font-size:11px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;flex-shrink:0">${initials(a.name)}</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:600;color:var(--dark)">${a.name}</div>
+            <div style="font-size:11px;color:#888">${fmtDate(a.completed_at)}</div>
+          </div>
+          <div class="grade-badge ${gradeClass(a.percentage)}" style="font-size:11px;padding:3px 10px">${a.percentage}%</div>
+        </div>`).join('')
+      : '<div class="empty-state">No activity yet.</div>'}
+    </div>
+  </div>
+  <div class="card" style="margin-top:16px">
+    <h2>📈 Pass / Fail Summary</h2><p class="subtitle">Pass threshold: 70%</p>
+    <div style="display:flex;gap:24px;align-items:center;margin-top:8px">
+      <div style="flex:1">
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+          <span style="font-size:13px;color:var(--green);font-weight:600">✅ Passed (≥70%)</span>
+          <span style="font-weight:800">${passCount}</span>
+        </div>
+        <div class="progress-bar" style="height:14px;border-radius:7px">
+          <div class="progress-fill" style="height:100%;background:var(--green);border-radius:7px;width:${totalA?Math.round(passCount/totalA*100):0}%"></div>
+        </div>
+      </div>
+      <div style="flex:1">
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+          <span style="font-size:13px;color:var(--red);font-weight:600">❌ Failed (&lt;70%)</span>
+          <span style="font-weight:800">${failCount}</span>
+        </div>
+        <div class="progress-bar" style="height:14px;border-radius:7px">
+          <div style="height:100%;background:var(--red);border-radius:7px;width:${totalA?Math.round(failCount/totalA*100):0}%;transition:width .3s"></div>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ── Members tab ──
+function renderAdminMembers(members) {
+  const q = state.memberSearch.toLowerCase();
+  const filtered = members.filter(u => !q || u.name.toLowerCase().includes(q) || u.email.includes(q));
+  return `
+  <div class="card">
+    <div class="section-header">
+      <div><h2>👥 Member Management</h2><p class="subtitle" style="margin-bottom:0">${members.length} registered member(s)</p></div>
+      <button class="export-btn" onclick="exportMembers()">⬇ Export CSV</button>
+    </div>
+    <input class="search-bar" type="text" placeholder="🔍 Search by name or email…"
+      value="${state.memberSearch}" oninput="state.memberSearch=this.value;document.getElementById('mainContent').innerHTML=renderAdmin();attachEvents()"/>
+    ${filtered.length===0 ? '<div class="empty-state">No members found.</div>' : filtered.map(u => {
+      const att = state.allAttempts.filter(a=>a.email===u.email);
+      const best = att.length ? Math.max(...att.map(a=>a.percentage)) : null;
+      const isR  = u.status === 'restricted';
+      return `
+      <div class="member-row">
+        <div class="member-avatar" style="background:${avatarColor(u.email)}">${initials(u.name)}</div>
+        <div class="member-info">
+          <div class="member-name">${u.name}</div>
+          <div class="member-email">${u.email}</div>
+          <div class="member-meta">Joined ${fmtDate(u.created_at)} · ${att.length} attempt(s)${best!==null?' · Best: '+best+'%':''}</div>
+        </div>
+        <span class="status-pill ${isR?'pill-restricted':'pill-active'}">${isR?'🔒 Restricted':'✅ Active'}</span>
+        <div style="display:flex;gap:6px;flex-shrink:0">
+          ${isR
+            ? `<button class="btn-icon" style="background:var(--green);color:#fff" onclick="adminToggleRestrict('${u.id}','${u.name}',false)">🔓 Restore</button>`
+            : `<button class="btn-icon" style="background:var(--red);color:#fff"   onclick="adminToggleRestrict('${u.id}','${u.name}',true)">🔒 Restrict</button>`}
+          <button class="btn-icon" style="background:#eee;color:#333" onclick="viewMemberDetail('${u.id}')">👁 Details</button>
+          <button class="btn-icon" style="background:var(--red);color:#fff" onclick="adminDeleteMember('${u.id}','${u.name}')">🗑 Delete</button>
+        </div>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+async function adminToggleRestrict(uid, name, restrict) {
+  if (!confirm(`${restrict?'Restrict':'Restore'} access for ${name}?`)) return;
+  try {
+    await sb.update('users', { status: restrict?'restricted':'active' }, `id=eq.${uid}`);
+    await loadAdmin();
+  } catch(e) { alert('Failed: '+JSON.stringify(e)); }
+}
+
+async function adminDeleteMember(uid, name) {
+  if (!confirm(`Delete account for ${name}?\n\nAll their quiz attempts will also be deleted. This cannot be undone.`)) return;
+  try {
+    await sb.delete('attempts', `user_id=eq.${uid}`);
+    await sb.delete('users',    `id=eq.${uid}`);
+    await loadAdmin();
+  } catch(e) { alert('Failed: '+JSON.stringify(e)); }
+}
+
+function viewMemberDetail(uid) {
+  const u   = state.allUsers.find(u=>u.id===uid);
+  if (!u) return;
+  const att = state.allAttempts.filter(a=>a.email===u.email);
+  const best= att.length ? Math.max(...att.map(a=>a.percentage)) : null;
+  const avg = att.length ? Math.round(att.reduce((s,a)=>s+a.percentage,0)/att.length) : null;
+  document.getElementById('modalContainer').innerHTML = `
+  <div class="modal-overlay" onclick="if(event.target===this)closeModal()">
+    <div class="modal">
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px">
+        <div class="member-avatar" style="background:${avatarColor(u.email)};width:52px;height:52px;font-size:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700">${initials(u.name)}</div>
+        <div>
+          <h3 style="margin-bottom:2px">${u.name}</h3>
+          <div style="font-size:13px;color:#888">${u.email}</div>
+          <span class="status-pill ${u.status==='restricted'?'pill-restricted':'pill-active'}" style="margin-top:4px;display:inline-block">
+            ${u.status==='restricted'?'🔒 Restricted':'✅ Active'}</span>
+        </div>
+      </div>
+      <div class="detail-row"><span class="label">Joined</span><span class="value">${fmtDate(u.created_at)}</span></div>
+      <div class="detail-row"><span class="label">Total Attempts</span><span class="value">${att.length}</span></div>
+      <div class="detail-row"><span class="label">Best Score</span><span class="value">${best!==null?best+'%':'—'}</span></div>
+      <div class="detail-row"><span class="label">Avg Score</span><span class="value">${avg!==null?avg+'%':'—'}</span></div>
+      ${att.length ? `
+      <div style="margin-top:12px">
+        <div style="font-size:12px;font-weight:700;color:#888;margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Recent Attempts</div>
+        ${att.slice(0,5).map(a=>`
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #f5f5f5">
+            <span style="font-size:12px;color:#666">${fmtDate(a.completed_at)}</span>
+            <div>
+              <span style="font-weight:700;color:var(--dark)">${a.score}/20 (${a.percentage}%)</span>
+              <span class="grade-badge ${gradeClass(a.percentage)}" style="font-size:10px;padding:2px 8px;margin-left:6px">${gradeName(a.percentage)}</span>
+            </div>
+          </div>`).join('')}
+      </div>` : ''}
+      <div class="modal-actions">
+        ${u.status==='restricted'
+          ? `<button class="btn btn-success" style="margin:0" onclick="adminToggleRestrict('${u.id}','${u.name}',false);closeModal()">🔓 Restore</button>`
+          : `<button class="btn btn-danger"  style="margin:0" onclick="adminToggleRestrict('${u.id}','${u.name}',true);closeModal()">🔒 Restrict</button>`}
+        <button class="btn btn-secondary" style="margin:0" onclick="closeModal()">Close</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function closeModal() { document.getElementById('modalContainer').innerHTML=''; }
+
+// ── All Results tab ──
+function renderAdminResults() {
+  const q = state.resultSearch.toLowerCase();
+  const filtered = state.allAttempts.filter(a => !q || a.name.toLowerCase().includes(q) || a.email.includes(q));
+  return `
+  <div class="card">
+    <div class="section-header">
+      <div><h2>📋 All Examination Results</h2><p class="subtitle" style="margin-bottom:0">${state.allAttempts.length} total submission(s)</p></div>
+      <button class="export-btn" onclick="exportResults()">⬇ Export CSV</button>
+    </div>
+    <input class="search-bar" type="text" placeholder="🔍 Search by name or email…"
+      value="${state.resultSearch}" oninput="state.resultSearch=this.value;document.getElementById('mainContent').innerHTML=renderAdmin();attachEvents()"/>
+    ${filtered.length===0 ? '<div class="empty-state">No results found.</div>' : `
+    <table class="lb-table">
+      <thead><tr><th>#</th><th>Name</th><th>Email</th><th>Score</th><th style="min-width:130px">Percentage</th><th>Grade</th><th>Date</th></tr></thead>
+      <tbody>
+        ${filtered.map((a,i)=>`
+          <tr>
+            <td style="color:#888;font-size:12px">${i+1}</td>
+            <td>
+              <div style="display:flex;align-items:center;gap:8px">
+                <div class="member-avatar" style="background:${avatarColor(a.email)};width:28px;height:28px;font-size:11px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;flex-shrink:0">${initials(a.name)}</div>
+                <span style="font-weight:600">${a.name}</span>
+              </div>
+            </td>
+            <td style="color:#888;font-size:12px">${a.email}</td>
+            <td style="font-weight:700">${a.score}/${a.total}</td>
+            <td>
+              <div class="pct-bar-wrap">
+                <div class="pct-bar"><div class="pct-bar-fill" style="width:${a.percentage}%"></div></div>
+                <span class="pct-num">${a.percentage}%</span>
+              </div>
+            </td>
+            <td>
+              <span class="grade-badge ${gradeClass(a.percentage)}" style="font-size:11px;padding:3px 10px">${gradeName(a.percentage)}</span>
+              ${a.timed_out?'<span class="tag tag-timed">Timed out</span>':''}
+            </td>
+            <td style="font-size:12px;color:#888;white-space:nowrap">${fmtDate(a.completed_at)}</td>
+          </tr>`).join('')}
+      </tbody>
+    </table>`}
+  </div>`;
+}
+
+// ── Add Member tab ──
+function renderAddMember() {
+  return `
+  <div class="card" style="max-width:520px">
+    <h2>➕ Add New Member</h2>
+    <p class="subtitle">Admin can directly create accounts without self-registration.</p>
+    <div id="addMemberAlert" class="alert"></div>
+    <div class="form-group"><label>Full Name</label><input type="text" id="amName" placeholder="Jane Smith"/></div>
+    <div class="form-group"><label>Business Email</label><input type="email" id="amEmail" placeholder="jane@company.com"/></div>
+    <div class="form-row">
+      <div class="form-group"><label>Temporary Password</label><input type="text" id="amPass" placeholder="Min 6 chars"/></div>
+      <div class="form-group"><label>Role</label>
+        <select id="amRole"><option value="member">Member</option><option value="admin">Admin</option></select>
+      </div>
+    </div>
+    <button class="btn btn-purple" id="amBtn" onclick="doAddMember()">➕ Add Member</button>
+  </div>`;
+}
+
+async function doAddMember() {
+  const name  = (document.getElementById('amName')?.value  || '').trim();
+  const email = (document.getElementById('amEmail')?.value || '').trim().toLowerCase();
+  const pass  = (document.getElementById('amPass')?.value  || '');
+  const role  = (document.getElementById('amRole')?.value  || 'member');
+  function addAlert(msg, type='error') {
+    const el=document.getElementById('addMemberAlert');
+    if(el){el.className='alert show alert-'+type;el.textContent=msg;}
+  }
+  if (!name)  return addAlert('Full name is required.');
+  if (!email) return addAlert('Email is required.');
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return addAlert('Invalid email format.');
+  if (!isBusinessEmail(email)) return addAlert('Only business emails are allowed.');
+  if (pass.length < 6) return addAlert('Password must be at least 6 characters.');
+  setLoading('amBtn', true);
+  try {
+    const existing = await sb.select('users', `email=eq.${encodeURIComponent(email)}&select=id`);
+    if (existing.length) return addAlert('An account with this email already exists.');
+    await sb.insert('users', { email, name, password_hash: hashPass(pass), role, status: 'active' });
+    addAlert(`✅ "${name}" (${email}) added. Temp password: ${pass}`, 'success');
+    document.getElementById('amName').value='';
+    document.getElementById('amEmail').value='';
+    document.getElementById('amPass').value='';
+    await loadAdmin();
+  } catch(e) {
+    addAlert('Failed: '+(e?.[0]?.message||e.message||JSON.stringify(e)));
+  } finally {
+    setLoading('amBtn', false, '➕ Add Member');
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+//  CSV EXPORTS
+// ══════════════════════════════════════════════════════════
+function exportResults() {
+  const header = ['Name','Email','Score','Total','Percentage','Grade','Date','Timed Out'];
+  const rows = state.allAttempts.map(a => [
+    `"${a.name}"`,`"${a.email}"`,a.score,a.total,a.percentage+'%',
+    `"${gradeName(a.percentage)}"`,`"${fmtDate(a.completed_at)}"`,a.timed_out?'Yes':'No'
+  ]);
+  downloadCSV([header,...rows], 's3-quiz-results.csv');
+}
+
+function exportMembers() {
+  const members = state.allUsers.filter(u=>u.role!=='admin');
+  const header = ['Name','Email','Role','Status','Joined','Attempts','Best Score'];
+  const rows = members.map(u => {
+    const att = state.allAttempts.filter(a=>a.email===u.email);
+    const best = att.length ? Math.max(...att.map(a=>a.percentage))+'%' : '—';
+    return [`"${u.name}"`,`"${u.email}"`,u.role,u.status,`"${fmtDate(u.created_at)}"`,att.length,best];
+  });
+  downloadCSV([header,...rows], 's3-quiz-members.csv');
+}
+
+function downloadCSV(rows, filename) {
+  const csv = rows.map(r=>r.join(',')).join('\n');
+  const blob = new Blob([csv],{type:'text/csv'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href=url; a.download=filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ══════════════════════════════════════════════════════════
+//  EVENT BINDING & INIT
+// ══════════════════════════════════════════════════════════
+function attachEvents() {
+  document.querySelectorAll('input[type=text],input[type=email],input[type=password]').forEach(inp => {
+    inp.addEventListener('keydown', e => {
+      if (e.key !== 'Enter' || state.view !== 'auth') return;
+      if (state.authTab === 'login') doLogin(); else doRegister();
+    });
+  });
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  if (state.currentUser) {
+    state.view = state.currentUser.role === 'admin' ? 'admin' : 'dashboard';
+  }
+  render();
+});
+</script>
+</body>
+</html>
