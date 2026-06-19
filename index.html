@@ -336,6 +336,9 @@
 const SUPABASE_URL = 'https://fcppedcarvpnzefwktwf.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZjcHBlZGNhcnZwbnplZndrdHdmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE3ODg0NDAsImV4cCI6MjA5NzM2NDQ0MH0.9gSnk7fKb-S5LJD3BbNcOD5yYidmrL2vpzrnBxdXjKI';
 
+// This value scopes ALL attempts reads/writes to this quiz only
+const QUIZ_TYPE = 's3';
+
 // ══════════════════════════════════════════════════════════
 //  SUPABASE REST CLIENT  (no npm needed — raw fetch calls)
 // ══════════════════════════════════════════════════════════
@@ -682,7 +685,7 @@ async function loadDashboard() {
   try {
     const uid = state.currentUser.id;
     state.myAttempts = await sb.select('attempts',
-      `user_id=eq.${uid}&order=completed_at.desc&select=*`);
+      `user_id=eq.${uid}&quiz_type=eq.${QUIZ_TYPE}&order=completed_at.desc&select=*`);
     // refresh user status in case admin changed it
     const users = await sb.select('users', `id=eq.${uid}&select=*`);
     if (users.length) {
@@ -690,7 +693,7 @@ async function loadDashboard() {
       saveSession();
     }
     // leaderboard — best per user
-    const all = await sb.select('attempts', 'select=email,name,score,percentage&order=percentage.desc');
+    const all = await sb.select('attempts', `quiz_type=eq.${QUIZ_TYPE}&select=email,name,score,percentage&order=percentage.desc`);
     const grouped = {};
     all.forEach(a => {
       if (!grouped[a.email]) grouped[a.email] = { name: a.name, email: a.email, best: 0, bestScore: 0, attempts: 0 };
@@ -915,7 +918,8 @@ async function submitQuiz(timedOut) {
       name:        state.currentUser.name,
       score, total: QUESTIONS.length,
       percentage:  pct,
-      timed_out:   timedOut
+      timed_out:   timedOut,
+      quiz_type:   QUIZ_TYPE
     });
   } catch(e) {
     console.warn('Failed to save attempt:', e);
@@ -994,7 +998,7 @@ async function loadAdmin() {
   showSpinner('Loading admin panel…');
   try {
     state.allUsers    = await sb.select('users',    'order=created_at.desc&select=*');
-    state.allAttempts = await sb.select('attempts', 'order=completed_at.desc&select=*');
+    state.allAttempts = await sb.select('attempts', `quiz_type=eq.${QUIZ_TYPE}&order=completed_at.desc&select=*`);
     document.getElementById('mainContent').innerHTML = renderAdmin();
     attachEvents();
   } catch(e) {
@@ -1157,7 +1161,7 @@ async function adminToggleRestrict(uid, name, restrict) {
 async function adminDeleteMember(uid, name) {
   if (!confirm(`Delete account for ${name}?\n\nAll their quiz attempts will also be deleted. This cannot be undone.`)) return;
   try {
-    await sb.delete('attempts', `user_id=eq.${uid}`);
+    await sb.delete('attempts', `user_id=eq.${uid}&quiz_type=eq.${QUIZ_TYPE}`);
     await sb.delete('users',    `id=eq.${uid}`);
     await loadAdmin();
   } catch(e) { alert('Failed: '+JSON.stringify(e)); }
