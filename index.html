@@ -997,8 +997,9 @@ async function loadAdmin() {
   }
   showSpinner('Loading admin panel…');
   try {
-    state.allUsers    = await sb.select('users',    'order=created_at.desc&select=*');
     state.allAttempts = await sb.select('attempts', `quiz_type=eq.${QUIZ_TYPE}&order=completed_at.desc&select=*`);
+    state.allUsers    = await sb.select('users', 'order=created_at.desc&select=*');
+    console.log(`[QUIZ_TYPE=${QUIZ_TYPE}] Attempts loaded:`, state.allAttempts.length, '| quiz_types:', [...new Set(state.allAttempts.map(a=>a.quiz_type))]);
     document.getElementById('mainContent').innerHTML = renderAdmin();
     attachEvents();
   } catch(e) {
